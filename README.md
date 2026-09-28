@@ -10,8 +10,10 @@ dotnet run
 
 Buka Swagger URL dari output aplikasi, lalu pakai endpoint `api/Juices`.
 
-## Gitleaks demo
+## Credential demo
 
-`appsettings.json` sengaja memuat fake GitHub PAT untuk presentasi Gitleaks. Nilai tersebut tidak memiliki akses GitHub dan tidak boleh dipakai di aplikasi nyata.
+Commit pertama sengaja pernah menyimpan fake GitHub PAT dan OpenWeatherMap API key untuk presentasi `gitleaks git`.
+
+Credential sekarang disimpan di `.env`, yang di-ignore Git. `appsettings.json` hanya berisi placeholder environment variable. Nilai credential tersebut dummy dan tidak boleh dipakai di aplikasi nyata.
 
 # toko-jus
