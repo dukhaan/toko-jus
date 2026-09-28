@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Segar Sore | Toko Jus</title>
+  <style>
+    :root { color-scheme: light; font-family: Arial, sans-serif; background: #fff8ed; color: #172319; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 960px; margin: auto; padding: 32px 20px 48px; }
+    header { background: #1d5b42; color: #fffdf8; padding: 28px; border-radius: 18px; }
+    h1, h2, p { margin-top: 0; }
+    header p { margin-bottom: 0; color: #d6eadc; }
+    section { margin-top: 24px; background: white; border: 1px solid #efe4d1; border-radius: 14px; padding: 22px; }
+    form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    label { display: grid; gap: 6px; font-weight: 700; }
+    input, textarea, button { font: inherit; }
+    input, textarea { border: 1px solid #b8c8bb; border-radius: 8px; padding: 10px; width: 100%; }
+    textarea { min-height: 42px; resize: vertical; }
+    .wide { grid-column: 1 / -1; }
+    button { background: #e47728; border: 0; border-radius: 8px; color: white; cursor: pointer; font-weight: 700; padding: 11px 14px; }
+    button:hover { background: #bc5819; }
+    .muted { background: #e8ede8; color: #23412d; }
+    .danger { background: #b9382e; }
+    #message { min-height: 24px; margin-top: 14px; color: #1d5b42; font-weight: 700; }
+    .juice-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+    article { border: 1px solid #e3eadf; border-radius: 10px; padding: 16px; }
+    article h3 { margin: 0 0 8px; }
+    .price { color: #d15d18; font-size: 1.25rem; font-weight: 700; }
+    .actions { display: flex; gap: 8px; margin-top: 14px; }
+    @media (max-width: 600px) { form { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Segar Sore</h1>
+      <p>Dashboard stok Toko Jus. CRUD demo ASP.NET Core.</p>
+    </header>
+    <section>
+      <h2 id="form-title">Tambah jus</h2>
+      <form id="juice-form">
+        <label>Nama jus<input id="name" required maxlength="100" placeholder="Contoh: Jus Jeruk"></label>
+        <label>Harga<input id="price" required type="number" min="0" step="500" placeholder="10000"></label>
+        <label class="wide">Deskripsi<textarea id="description" required maxlength="300" placeholder="Buah segar, tanpa pemanis buatan"></textarea></label>
+        <label class="wide"><span><input id="available" type="checkbox" checked> Tersedia hari ini</span></label>
+        <div class="wide actions"><button type="submit">Simpan Jus</button><button class="muted" type="button" id="cancel" hidden>Batal edit</button></div>
+      </form>
+      <div id="message" role="status"></div>
+    </section>
+    <section>
+      <h2>Menu Jus</h2>
+      <div id="juice-list" class="juice-list"></div>
+    </section>
+  </main>
+  <script>
+    const apiUrl = '/api/Juices';
+    const form = document.querySelector('#juice-form');
+    const formTitle = document.querySelector('#form-title');
+    const message = document.querySelector('#message');
+    const cancelButton = document.querySelector('#cancel');
+    let editingId = null;
+
+    const rupiah = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+
+    function setMessage(text, isError = false) {
+      message.textContent = text;
+      message.style.color = isError ? '#b9382e' : '#1d5b42';
+    }
+
+    function resetForm() {
+      editingId = null;
+      form.reset();
+      document.querySelector('#available').checked = true;
+      formTitle.textContent = 'Tambah jus';
+      cancelButton.hidden = true;
+    }
+
+    async function loadJuices() {
+      const response = await fetch(apiUrl);
+      const juices = await response.json();
+      document.querySelector('#juice-list').innerHTML = juices.map(juice => `
+        <article>
+          <h3>${escapeHtml(juice.name)}</h3>
+          <p>${escapeHtml(juice.description)}</p>
+          <div class="price">${rupiah.format(juice.price)}</div>
+          <p>${juice.isAvailable ? 'Tersedia' : 'Stok habis'}</p>
+          <div class="actions">
+            <button class="muted" onclick="editJuice(${juice.id})">Edit</button>
+            <button class="danger" onclick="deleteJuice(${juice.id})">Hapus</button>
+          </div>
+        </article>`).join('');
+    }
+
+    function escapeHtml(value) {
+      const element = document.createElement('div');
+      element.textContent = value;
+      return element.innerHTML;
+    }
+
+    window.editJuice = async id => {
+      const juice = await (await fetch(`${apiUrl}/${id}`)).json();
+      editingId = id;
+      document.querySelector('#name').value = juice.name;
+      document.querySelector('#description').value = juice.description;
+      document.querySelector('#price').value = juice.price;
+      document.querySelector('#available').checked = juice.isAvailable;
+      formTitle.textContent = `Edit ${juice.name}`;
+      cancelButton.hidden = false;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.deleteJuice = async id => {
+      if (!confirm('Hapus menu jus ini?')) return;
+      const response = await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+      setMessage(response.ok ? 'Menu jus dihapus.' : 'Gagal menghapus menu.', !response.ok);
+      if (response.ok) await loadJuices();
+    };
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const juice = {
+        name: document.querySelector('#name').value,
+        description: document.querySelector('#description').value,
+        price: Number(document.querySelector('#price').value),
+        isAvailable: document.querySelector('#available').checked
+      };
+      const response = await fetch(editingId ? `${apiUrl}/${editingId}` : apiUrl, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(juice)
+      });
+      setMessage(response.ok ? 'Menu jus disimpan.' : 'Gagal menyimpan menu.', !response.ok);
+      if (response.ok) { resetForm(); await loadJuices(); }
+    });
+
+    cancelButton.addEventListener('click', resetForm);
+    loadJuices().catch(() => setMessage('API tidak dapat dihubungi.', true));
+  </script>
+</body>
+</html>
